@@ -1,0 +1,5 @@
+moviepy==1.0.3
+openai-whisper==20231117
+translate==3.6.1
+gtts==2.5.1
+tkinter==
