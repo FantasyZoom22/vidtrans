@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, render_template
 from moviepy.video.io.VideoFileClip import VideoFileClip
-import openai_whisper as whisper
+import openai-whisper as whisper
 from translate import Translator
 from gtts import gTTS
 import os
