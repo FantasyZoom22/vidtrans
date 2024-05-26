@@ -80,6 +80,9 @@ def upload_file():
     # Combine video and new audio
     combine_video_audio(video_path, tts_audio_path)
 
+     uploads_dir = "uploads"
+     if not os.path.exists(uploads_dir):
+    os.makedirs(uploads_dir)
 
      # Upload the final video to Cloudinary
     response = cloudinary.uploader.upload("final_video.mp4")
@@ -95,6 +98,8 @@ def upload_file():
     return jsonify({"message": "Final video uploaded to Cloudinary!", "video_url": video_url})
 
     # return jsonify({"message": "Final video with translated audio created!", "video_path": "final_video.mp4"})
+
+
 
 if __name__ == "__main__":
     if not os.path.exists('uploads'):
