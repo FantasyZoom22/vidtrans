@@ -5,6 +5,15 @@ from translate import Translator
 from gtts import gTTS
 import os
 
+import cloudinary
+
+# Cloudinary configuration (replace with your credentials)
+cloudinary.config(
+    cloud_name="dsjjtnudl",
+    api_key="272999119546813",
+    api_secret="fBRJ8Dn3bAFLO42GuYajbD4AUds"
+)
+
 app = Flask(__name__)
 
 def extract_audio(video_path):
@@ -71,7 +80,21 @@ def upload_file():
     # Combine video and new audio
     combine_video_audio(video_path, tts_audio_path)
 
-    return jsonify({"message": "Final video with translated audio created!", "video_path": "final_video.mp4"})
+
+     # Upload the final video to Cloudinary
+    response = cloudinary.uploader.upload("final_video.mp4")
+
+    # Access the uploaded video URL from the response
+    video_url = response["url"]
+
+    # Clean up temporary files (optional)
+    os.remove(audio_path)
+    os.remove(tts_audio_path)
+    os.remove("final_video.mp4")  # Consider alternative approach for efficiency
+
+    return jsonify({"message": "Final video uploaded to Cloudinary!", "video_url": video_url})
+
+    # return jsonify({"message": "Final video with translated audio created!", "video_path": "final_video.mp4"})
 
 if __name__ == "__main__":
     if not os.path.exists('uploads'):
