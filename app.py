@@ -1,9 +1,10 @@
 from flask import Flask, request, jsonify, render_template
-from moviepy.video.io.VideoFileClip import VideoFileClip
+from moviepy.editor import VideoFileClip  # Use VideoFileClip from moviepy.editor
 import whisper
 from translate import Translator
 from gtts import gTTS
-import os
+import io
+import tempfile
 
 import cloudinary
 
@@ -17,11 +18,13 @@ cloudinary.config(
 app = Flask(__name__)
 
 
-def extract_audio(video):
-    # video = VideoFileClip(video_path)
-     video_data = video.read()
-    audio = video_data.audio
-    audio_data = audio.read()  # Read audio data directly
+def extract_audio(video_data):
+    # Create a temporary video file (optional)
+    with tempfile.NamedTemporaryFile(suffix=".mp4") as temp_video_file:
+        temp_video_file.write(video_data)
+        video = VideoFileClip(temp_video_file.name)  # Use temp_video_file for processing
+        audio = video.audio
+        audio_data = audio.read()  # Read audio data directly
     return audio_data
 
 
@@ -47,14 +50,13 @@ def text_to_speech(text, language="es"):
     return audio_data
 
 
-def combine_video_audio(video_path, audio_data):
-    video = VideoFileClip(video_path)
+def combine_video_audio(video_data, audio_data):
+    # Create a temporary video file for processing
+    with tempfile.NamedTemporaryFile(suffix=".mp4") as temp_video_file:
+        temp_video_file.write(video_data)
+        video = VideoFileClip(temp_video_file.name)
 
-    # Use temporary file for audio to avoid creating unnecessary files
-    with tempfile.NamedTemporaryFile(suffix=".mp3") as temp_audio_file:
-        temp_audio_file.write(audio_data.read())
-        temp_audio_file.seek(0)
-        audio = mp.AudioFileClip(temp_audio_file.name)
+        audio = mp.AudioFileClip(io.BytesIO(audio_data.read()))  # Create AudioFileClip from in-memory data
 
         if video.duration < audio.duration:
             audio = audio.subclip(0, video.duration)
@@ -80,8 +82,11 @@ def upload_file():
 
     target_language = request.form.get('language', 'es')
 
+    # Access uploaded video data
+    video_data = video.read()
+
     # Extract audio data from video
-    audio_data = extract_audio(video.filename)
+    audio_data = extract_audio(video_data)
 
     # Transcribe audio
     transcribed_text = transcribe_audio(audio_data)
@@ -93,7 +98,7 @@ def upload_file():
     tts_audio_data = text_to_speech(translated_text, target_language)
 
     # Combine video and new audio (in-memory data)
-    combined_video_data = combine_video_audio(video.filename, tts_audio_data)
+    combined_video_data = combine_video_audio(video_data, tts_audio_data)
 
     # Upload the combined video data to Cloudinary
     response = cloudinary.uploader.upload(combined_video_data.read(), public_id=f"processed_video_{video.filename}")
@@ -105,8 +110,7 @@ def upload_file():
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
-
+    app.run(host='0.0.0.0', port=5000
 
 
 
