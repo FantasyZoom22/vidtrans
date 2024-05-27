@@ -17,9 +17,10 @@ cloudinary.config(
 app = Flask(__name__)
 
 
-def extract_audio(video_path):
-    video = VideoFileClip(video_path)
-    audio = video.audio
+def extract_audio(video):
+    # video = VideoFileClip(video_path)
+     video_data = video.read()
+    audio = video_data.audio
     audio_data = audio.read()  # Read audio data directly
     return audio_data
 
