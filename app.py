@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, flash
 from moviepy.editor import VideoFileClip  # Use VideoFileClip from moviepy.editor
 import whisper
 from translate import Translator
@@ -16,15 +16,11 @@ cloudinary.config(
 )
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key'  # Add a secret key for flash messages
 
-
-def extract_audio(video_data):
-    # Create a temporary video file (optional)
-    with tempfile.NamedTemporaryFile(suffix=".mp4") as temp_video_file:
-        temp_video_file.write(video_data)
-        video = VideoFileClip(temp_video_file.name)  # Use temp_video_file for processing
-        audio = video.audio
-        audio_data = audio.read()  # Read audio data directly
+def extract_audio(video_data):  # Access the uploaded video data directly
+    # Replace with your audio extraction logic (e.g., using libraries like moviepy)
+    audio_data = video_data  # Placeholder, implement audio extraction here
     return audio_data
 
 
@@ -82,35 +78,36 @@ def upload_file():
 
     target_language = request.form.get('language', 'es')
 
-    # Access uploaded video data
-    video_data = video.read()
+    try:
+        # Access uploaded video data
+        video_data = video.read()
 
-    # Extract audio data from video
-    audio_data = extract_audio(video_data)
+        # Extract audio data from video
+        audio_data = extract_audio(video_data)
 
-    # Transcribe audio
-    transcribed_text = transcribe_audio(audio_data)
+        # Transcribe audio
+        transcribed_text = transcribe_audio(audio_data)
 
-    # Translate text
-    translated_text = translate_text(transcribed_text, target_language)
+        # Translate text
+        translated_text = translate_text(transcribed_text, target_language)
 
-    # Convert translated text to speech
-    tts_audio_data = text_to_speech(translated_text, target_language)
+        # Convert translated text to speech
+        tts_audio_data = text_to_speech(translated_text, target_language)
 
-    # Combine video and new audio (in-memory data)
-    combined_video_data = combine_video_audio(video_data, tts_audio_data)
+        # Combine video and new audio (in-memory data)
+        combined_video_data = combine_video_audio(video_data, tts_audio_data)
 
-    # Upload the combined video data to Cloudinary
-    response = cloudinary.uploader.upload(combined_video_data.read(), public_id=f"processed_video_{video.filename}")
+        # Upload the combined video data to Cloudinary
+        response = cloudinary.uploader.upload(combined_video_data.read(), public_id=f"processed_video_{video.filename}")
 
-    # Access the uploaded video URL from the response
-    video_url = response["url"]
+        # Access the uploaded video URL from the response
+        video_url = response["url"]
 
-    return jsonify({"message": "Final video uploaded to Cloudinary!", "video_url": video_url})
+        flash("Final video uploaded to Cloudinary successfully!", 'success')
+        return render_template('index.html', video_url=video_url)  # Redirect to index with video URL
 
-
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
+    except Exception as e:
+        flash
 
 
 
