@@ -49,7 +49,7 @@ def video_to_audio_and_transcription():
         return "No video URL provided", 400
 
     video_url = request.json['video_url']
-    webhook_url = "https://n8n-manager.onrender.com/webhook-test/e8b55785-8786-44c5-85a8-56cd0d51823a"
+    webhook_url = "https://n8n-manager.onrender.com/webhook/e8b55785-8786-44c5-85a8-56cd0d51823a"
 
     try:
         # Step 1: Download the video from the provided URL
