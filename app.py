@@ -24,6 +24,7 @@ app.secret_key = secrets.token_hex(16)  # Automatically generate a secure random
 def extract_audio(video_data):
     with tempfile.NamedTemporaryFile(suffix=".mp4") as temp_video_file:
         temp_video_file.write(video_data)
+        temp_video_file.flush()
         video = VideoFileClip(temp_video_file.name)
         audio = video.audio
         audio_data = io.BytesIO()
@@ -33,6 +34,7 @@ def extract_audio(video_data):
 
 def transcribe_audio(audio_data):
     model = whisper.load_model("base")
+    audio_data.seek(0)
     result = model.transcribe(audio_data)
     transcription = result["text"]
     return transcription
@@ -43,7 +45,7 @@ def index():
 
 @app.route('/videotoaudioandtranscription', methods=['POST'])
 def video_to_audio_and_transcription():
-    if 'video_url' not in request.json:
+    if not request.is_json or 'video_url' not in request.json:
         return "No video URL provided", 400
 
     video_url = request.json['video_url']
@@ -57,17 +59,20 @@ def video_to_audio_and_transcription():
         # Step 2: Extract audio from the downloaded video
         audio_data = extract_audio(video_data)
 
-        # Step 3: Upload the extracted audio to Cloudinary
-        response = cloudinary.uploader.upload(audio_data, resource_type="raw")
+        # Step 3: Read audio data as bytes
+        audio_data_bytes = audio_data.read()
+
+        # Step 4: Upload the extracted audio to Cloudinary
+        response = cloudinary.uploader.upload(io.BytesIO(audio_data_bytes), resource_type="raw")
         audio_url = response["url"]
 
-        # Step 4: Transcribe the audio
-        transcription = transcribe_audio(audio_data)
+        # Step 5: Transcribe the audio
+        transcription = transcribe_audio(io.BytesIO(audio_data_bytes))
 
-        # Step 5: Send the transcription to the webhook URL
+        # Step 6: Send the transcription to the webhook URL
         webhook_response = requests.post(webhook_url, json={"transcription": transcription})
         if webhook_response.status_code != 200:
-            return jsonify({"error": "Failed to sendi transcription to webhook"}), 500
+            return jsonify({"error": "Failed to send transcription to webhook"}), 500
 
         return jsonify({"audio_url": audio_url, "transcription": transcription})
 
