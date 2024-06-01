@@ -22,7 +22,7 @@ app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)  # Automatically generate a secure random secret key
 
 def extract_audio(video_data):
-    with tempfile.NamedTemporaryFile(suffix=".mp4") as temp_video_file:
+    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_video_file:
         temp_video_file.write(video_data)
         temp_video_file.flush()
         video = VideoFileClip(temp_video_file.name)
@@ -49,17 +49,18 @@ def video_to_audio_and_transcription():
         return "No video URL provided", 400
 
     video_url = request.json['video_url']
-    webhook_url = "https://n8n-manager.onrender.com/webhook/e8b55785-8786-44c5-85a8-56cd0d51823a"
+    webhook_url = "https://n8n-manager.onrender.com/webhook-test/e8b55785-8786-44c5-85a8-56cd0d51823a"
 
     try:
         # Step 1: Download the video from the provided URL
         video_response = requests.get(video_url)
-        video_data = io.BytesIO(video_response.content)
+        video_data = video_response.content
 
         # Step 2: Extract audio from the downloaded video
         audio_data = extract_audio(video_data)
 
-        # Step 3: Read audio data as bytes
+        # Step 3: Read audio data as bytes for Cloudinary upload
+        audio_data.seek(0)
         audio_data_bytes = audio_data.read()
 
         # Step 4: Upload the extracted audio to Cloudinary
@@ -81,6 +82,7 @@ def video_to_audio_and_transcription():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
