@@ -60,8 +60,7 @@ def video_to_audio_and_transcription():
         audio_data = extract_audio(video_data)
 
         # Step 3: Read audio data as bytes for Cloudinary upload
-        audio_data.seek(0)
-        audio_data_bytes = audio_data.read()
+        audio_data_bytes = audio_data.getvalue()
 
         # Step 4: Upload the extracted audio to Cloudinary
         response = cloudinary.uploader.upload(io.BytesIO(audio_data_bytes), resource_type="raw")
@@ -82,6 +81,7 @@ def video_to_audio_and_transcription():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
