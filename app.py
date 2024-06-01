@@ -8,7 +8,6 @@ import tempfile
 import requests
 import cloudinary
 import cloudinary.uploader
-import moviepy.audio.io.AudioFileClip as mp
 import secrets  # Import the secrets module for generating the secret key
 
 # Cloudinary configuration (replace with your credentials)
@@ -25,16 +24,21 @@ def extract_audio(video_data):
     with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_video_file:
         temp_video_file.write(video_data)
         temp_video_file.flush()
-        video = VideoFileClip(temp_video_file.name)
-        
-        if not video.audio:
-            raise ValueError("The video file has no audio track.")
-        
-        audio = video.audio
-        audio_data = io.BytesIO()
-        audio.write_audiofile(audio_data, codec='pcm_s16le')
-        audio_data.seek(0)
-    return audio_data
+        temp_video_path = temp_video_file.name
+
+    video = VideoFileClip(temp_video_path)
+    
+    if not video.audio:
+        raise ValueError("The video file has no audio track.")
+    
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio_file:
+        audio_path = temp_audio_file.name
+        video.audio.write_audiofile(audio_path, codec='pcm_s16le')
+
+    with open(audio_path, 'rb') as f:
+        audio_data = f.read()
+
+    return io.BytesIO(audio_data)
 
 def transcribe_audio(audio_data):
     model = whisper.load_model("base")
