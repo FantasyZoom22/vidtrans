@@ -26,6 +26,10 @@ def extract_audio(video_data):
         temp_video_file.write(video_data)
         temp_video_file.flush()
         video = VideoFileClip(temp_video_file.name)
+        
+        if not video.audio:
+            raise ValueError("The video file has no audio track.")
+        
         audio = video.audio
         audio_data = io.BytesIO()
         audio.write_audiofile(audio_data, codec='pcm_s16le')
@@ -81,6 +85,8 @@ def video_to_audio_and_transcription():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+
 
 
 
