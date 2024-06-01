@@ -67,7 +67,7 @@ def video_to_audio_and_transcription():
         # Step 5: Send the transcription to the webhook URL
         webhook_response = requests.post(webhook_url, json={"transcription": transcription})
         if webhook_response.status_code != 200:
-            return jsonify({"error": "Failed to send transcription to webhook"}), 500
+            return jsonify({"error": "Failed to sendi transcription to webhook"}), 500
 
         return jsonify({"audio_url": audio_url, "transcription": transcription})
 
