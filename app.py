@@ -43,25 +43,28 @@ def index():
 
 @app.route('/videotoaudioandtranscription', methods=['POST'])
 def video_to_audio_and_transcription():
-    if 'video' not in request.files:
-        return "No video file provided", 400
+    if 'video_url' not in request.json:
+        return "No video URL provided", 400
 
-    video = request.files['video']
+    video_url = request.json['video_url']
     webhook_url = "https://n8n-manager.onrender.com/webhook-test/e8b55785-8786-44c5-85a8-56cd0d51823a"
 
     try:
-        # Step 1: Extract audio from the uploaded video
-        video_data = video.read()
+        # Step 1: Download the video from the provided URL
+        video_response = requests.get(video_url)
+        video_data = io.BytesIO(video_response.content)
+
+        # Step 2: Extract audio from the downloaded video
         audio_data = extract_audio(video_data)
 
-        # Step 2: Upload the extracted audio to Cloudinary
+        # Step 3: Upload the extracted audio to Cloudinary
         response = cloudinary.uploader.upload(audio_data, resource_type="raw")
         audio_url = response["url"]
 
-        # Step 3: Transcribe the audio
+        # Step 4: Transcribe the audio
         transcription = transcribe_audio(audio_data)
 
-        # Step 4: Send the transcription to the webhook URL
+        # Step 5: Send the transcription to the webhook URL
         webhook_response = requests.post(webhook_url, json={"transcription": transcription})
         if webhook_response.status_code != 200:
             return jsonify({"error": "Failed to send transcription to webhook"}), 500
@@ -73,7 +76,6 @@ def video_to_audio_and_transcription():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
 
 
 
