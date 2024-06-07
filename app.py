@@ -7,6 +7,7 @@ import cloudinary
 import cloudinary.uploader
 import secrets
 import logging
+import faster_whisper  # Import the faster-whisper library
 
 # Cloudinary configuration (replace with your credentials)
 cloudinary.config(
@@ -44,6 +45,18 @@ def extract_audio(video_data):
 
     except Exception as e:
         logging.error(f"Error extracting audio: {e}")
+        raise
+
+def transcribe_audio(audio_data):
+    try:
+        # Load the faster-whisper model
+        model = faster_whisper.WhisperModel("base")
+        audio_data.seek(0)
+        result = model.transcribe(audio_data)
+        transcription = result["text"]
+        return transcription
+    except Exception as e:
+        logging.error(f"Error transcribing audio: {e}")
         raise
 
 @app.route('/')
@@ -84,8 +97,34 @@ def video_to_audio():
         logging.error(f"Unexpected error: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/audioTotranscription', methods=['POST'])
+def audio_to_transcription():
+    if not request.is_json or 'audio_url' not in request.json:
+        return jsonify({"error": "No audio URL provided"}), 400
+
+    audio_url = request.json['audio_url']
+
+    try:
+        logging.info(f"Downloading audio from URL: {audio_url}")
+        audio_response = requests.get(audio_url)
+        audio_response.raise_for_status()
+        audio_data = io.BytesIO(audio_response.content)
+
+        logging.info("Transcribing audio")
+        transcription = transcribe_audio(audio_data)
+
+        return jsonify({"transcription": transcription})
+
+    except requests.RequestException as e:
+        logging.error(f"Error downloading audio: {e}")
+        return jsonify({"error": "Failed to download audio"}), 500
+    except Exception as e:
+        logging.error(f"Unexpected error: {e}")
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
