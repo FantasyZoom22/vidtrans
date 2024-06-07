@@ -1,14 +1,12 @@
-from flask import Flask, request, jsonify, render_template, flash
+from flask import Flask, request, jsonify, render_template
 from moviepy.editor import VideoFileClip
-import whisper
-from translate import Translator
-from gtts import gTTS
 import io
 import tempfile
 import requests
 import cloudinary
 import cloudinary.uploader
-import secrets  # Import the secrets module for generating the secret key
+import secrets
+import logging
 
 # Cloudinary configuration (replace with your credentials)
 cloudinary.config(
@@ -18,77 +16,77 @@ cloudinary.config(
 )
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(16)  # Automatically generate a secure random secret key
+app.secret_key = secrets.token_hex(16)
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
 
 def extract_audio(video_data):
-    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_video_file:
-        temp_video_file.write(video_data)
-        temp_video_file.flush()
-        temp_video_path = temp_video_file.name
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_video_file:
+            temp_video_file.write(video_data)
+            temp_video_file.flush()
+            temp_video_path = temp_video_file.name
 
-    video = VideoFileClip(temp_video_path)
-    
-    if not video.audio:
-        raise ValueError("The video file has no audio track.")
-    
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio_file:
-        audio_path = temp_audio_file.name
-        video.audio.write_audiofile(audio_path, codec='pcm_s16le')
+        video = VideoFileClip(temp_video_path)
+        
+        if not video.audio:
+            raise ValueError("The video file has no audio track.")
+        
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio_file:
+            audio_path = temp_audio_file.name
+            video.audio.write_audiofile(audio_path, codec='pcm_s16le')
 
-    with open(audio_path, 'rb') as f:
-        audio_data = f.read()
+        with open(audio_path, 'rb') as f:
+            audio_data = f.read()
 
-    return io.BytesIO(audio_data)
+        return io.BytesIO(audio_data)
 
-def transcribe_audio(audio_data):
-    model = whisper.load_model("base")
-    audio_data.seek(0)
-    result = model.transcribe(audio_data)
-    transcription = result["text"]
-    return transcription
+    except Exception as e:
+        logging.error(f"Error extracting audio: {e}")
+        raise
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/videotoaudioandtranscription', methods=['POST'])
-def video_to_audio_and_transcription():
+@app.route('/videotoaudio', methods=['POST'])
+def video_to_audio():
     if not request.is_json or 'video_url' not in request.json:
-        return "No video URL provided", 400
+        return jsonify({"error": "No video URL provided"}), 400
 
     video_url = request.json['video_url']
-    webhook_url = "https://n8n-manager.onrender.com/webhook-test/e8b55785-8786-44c5-85a8-56cd0d51823a"
 
     try:
-        # Step 1: Download the video from the provided URL
+        logging.info(f"Downloading video from URL: {video_url}")
         video_response = requests.get(video_url)
+        video_response.raise_for_status()
         video_data = video_response.content
 
-        # Step 2: Extract audio from the downloaded video
+        logging.info("Extracting audio from video")
         audio_data = extract_audio(video_data)
 
-        # Step 3: Read audio data as bytes for Cloudinary upload
         audio_data_bytes = audio_data.getvalue()
 
-        # Step 4: Upload the extracted audio to Cloudinary
+        logging.info("Uploading audio to Cloudinary")
         response = cloudinary.uploader.upload(io.BytesIO(audio_data_bytes), resource_type="raw")
         audio_url = response["url"]
 
-        # Step 5: Transcribe the audio
-        transcription = transcribe_audio(io.BytesIO(audio_data_bytes))
+        return jsonify({"audio_url": audio_url})
 
-        # Step 6: Send the transcription to the webhook URL
-        webhook_response = requests.post(webhook_url, json={"transcription": transcription})
-        if webhook_response.status_code != 200:
-            return jsonify({"error": "Failed to send transcription to webhook"}), 500
-
-        return jsonify({"audio_url": audio_url, "transcription": transcription})
-
+    except requests.RequestException as e:
+        logging.error(f"Error downloading video: {e}")
+        return jsonify({"error": "Failed to download video"}), 500
+    except cloudinary.exceptions.Error as e:
+        logging.error(f"Error uploading audio to Cloudinary: {e}")
+        return jsonify({"error": "Failed to upload audio to Cloudinary"}), 500
     except Exception as e:
+        logging.error(f"Unexpected error: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
