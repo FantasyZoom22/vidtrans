@@ -3,6 +3,6 @@ cloudinary==1.40.0
 moviepy==1.0.3
 openai-whisper
 translate==3.6.1
+whisper-openai==1.0.0
 gtts==2.5.1
-whisper-ctranslate2==0.4.4
 gunicorn==22.0.0
