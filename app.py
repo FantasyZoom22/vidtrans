@@ -7,7 +7,7 @@ import cloudinary
 import cloudinary.uploader
 import secrets
 import logging
-import faster_whisper  # Import the faster-whisper library
+import whisper_ct2
 
 # Cloudinary configuration (replace with your credentials)
 cloudinary.config(
@@ -49,8 +49,7 @@ def extract_audio(video_data):
 
 def transcribe_audio(audio_data):
     try:
-        # Load the faster-whisper model
-        model = faster_whisper.WhisperModel("base")
+        model = whisper_ct2.WhisperModel("base", device="cuda")  # Change to "cpu" if you don't have a GPU
         audio_data.seek(0)
         result = model.transcribe(audio_data)
         transcription = result["text"]
@@ -124,6 +123,7 @@ def audio_to_transcription():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
