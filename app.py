@@ -33,9 +33,9 @@ def extract_audio(video_data):
         if not video.audio:
             raise ValueError("The video file has no audio track.")
         
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_audio_file:
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_audio_file:
             audio_path = temp_audio_file.name
-            video.audio.write_audiofile(audio_path, codec='pcm_s16le')
+            video.audio.write_audiofile(audio_path, codec='libmp3lame')
 
         with open(audio_path, 'rb') as f:
             audio_data = f.read()
@@ -69,7 +69,7 @@ def video_to_audio():
         audio_data_bytes = audio_data.getvalue()
 
         logging.info("Uploading audio to Cloudinary")
-        response = cloudinary.uploader.upload(io.BytesIO(audio_data_bytes), resource_type="raw")
+        response = cloudinary.uploader.upload(io.BytesIO(audio_data_bytes), resource_type="video", format="mp3")
         audio_url = response["url"]
 
         return jsonify({"audio_url": audio_url})
