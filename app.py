@@ -7,7 +7,7 @@ import cloudinary
 import cloudinary.uploader
 import secrets
 import logging
-import whisper  # Assuming whisper-ctranslate2 is installed
+import whisper  # Import the whisper library
 
 # Cloudinary configuration (replace with your credentials)
 cloudinary.config(
@@ -49,7 +49,8 @@ def extract_audio(video_data):
 
 def transcribe_audio(audio_data):
     try:
-        model = whisper_ct2.WhisperModel("base", device="cuda")  # Change to "cpu" if you don't have a GPU
+        # Load the whisper model
+        model = whisper.load_model("base")
         audio_data.seek(0)
         result = model.transcribe(audio_data)
         transcription = result["text"]
@@ -96,33 +97,23 @@ def video_to_audio():
         logging.error(f"Unexpected error: {e}")
         return jsonify({"error": str(e)}), 500
 
-model = whisper.load_model("base")  # Load Whisper model (change base to small or medium if needed)
+@app.route('/audioTotranscription', methods=['POST'])
+def audio_to_transcription():
+    if not request.is_json or 'audio_url' not in request.json:
+        return jsonify({"error": "No audio URL provided"}), 400
 
-@app.route('/audiotranscription', methods=['POST'])
-def audio_transcription():
-  if not request.is_json or 'audio_url' not in request.json:
-      return jsonify({"error": "No audio URL provided"}), 400
+    audio_url = request.json['audio_url']
 
-  audio_url = request.json['audio_url']
+    try:
+        logging.info(f"Downloading audio from URL: {audio_url}")
+        audio_response = requests.get(audio_url)
+        audio_response.raise_for_status()
+        audio_data = io.BytesIO(audio_response.content)
 
-  try:
-      logging.info(f"Downloading audio from URL: {audio_url}")
-      audio_response = requests.get(audio_url)
-      audio_response.raise_for_status()
-      audio_data = audio_response.content
+        logging.info("Transcribing audio")
+        transcription = transcribe_audio(audio_data)
 
-      logging.info("Extracting audio (if video is provided)")
-      # If the URL points to a video, extract audio first
-      if audio_url.endswith((".mp4", ".mkv", ".avi")):
-          audio_data = extract_audio(audio_data)
-          audio_data_bytes = audio_data.getvalue()
-      else:
-          audio_data_bytes = audio_data
-
-      logging.info("Performing audio transcription using Whisper")
-      transcription = model.transcribe(audio_data_bytes)
-
-      return jsonify({"transcription": transcription})
+        return jsonify({"transcription": transcription})
 
     except requests.RequestException as e:
         logging.error(f"Error downloading audio: {e}")
@@ -133,8 +124,6 @@ def audio_transcription():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-
 
 
 
