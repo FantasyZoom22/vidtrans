@@ -4,4 +4,5 @@ moviepy==1.0.3
 openai-whisper
 translate==3.6.1
 gtts==2.5.1
+faster-whisper==1.0.2
 gunicorn==22.0.0
